@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import type { ChatSession } from './components/Sidebar';
 import { ChatWindow } from './components/ChatWindow';
 import type { Message } from './components/ChatWindow';
 
-// Color themes with classy, desaturated palettes
 export type ColorTheme = 'violet' | 'emerald' | 'slate' | 'amber';
 
 export interface ThemeConfig {
@@ -15,7 +14,7 @@ export interface ThemeConfig {
 
 function App() {
   const [sessions] = useState<ChatSession[]>([
-    { id: '1', title: 'Cafe ordering practice', targetLanguage: 'Spanish', lastUpdated: '10 mins ago' },
+    { id: '1', title: 'Cafe ordering practice', targetLanguage: 'Spanish', lastUpdated: 'Just now' },
     { id: '2', title: 'Directions in Tokyo', targetLanguage: 'Japanese', lastUpdated: 'Yesterday' }
   ]);
   const [activeSession, setActiveSession] = useState<string>('1');
@@ -26,21 +25,6 @@ function App() {
       sender: 'bot', 
       text: '¡Hola! ¿Cómo estás hoy? ¿En qué te puedo ayudar? (Hello! How are you today? How can I help you?)', 
       timestamp: '10:10 AM' 
-    },
-    { 
-      id: 'm2', 
-      sender: 'user', 
-      text: 'Yo querer un cafe por favor.', 
-      originalText: 'Yo querer un cafe por favor.',
-      correction: 'Quiero un café, por favor.', 
-      explanation: 'In Spanish, we use the conjugated verb "Quiero" (I want) instead of the infinitive "querer" (to want) when ordering.',
-      timestamp: '10:12 AM' 
-    },
-    { 
-      id: 'm3', 
-      sender: 'bot', 
-      text: '¡Excelente! Un café con leche o café solo? (Excellent! Coffee with milk or black coffee?)', 
-      timestamp: '10:12 AM' 
     }
   ]);
 
@@ -48,50 +32,143 @@ function App() {
   const [targetLanguage, setTargetLanguage] = useState('Spanish');
   const [isTyping, setIsTyping] = useState(false);
 
-  // Classy customization theme state
   const [theme, setTheme] = useState<ThemeConfig>({
     mode: 'dark',
     colorTheme: 'violet',
-    chatBackground: 'bg-mesh-dark' // custom gradient background
+    chatBackground: 'bg-mesh-dark'
   });
 
-  // Track system theme preferences or update dark mode class
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme.mode === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  }, [theme.mode]);
-
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-    const newMessage: Message = {
+
+    const userMessageText = inputValue;
+    const userMessage: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text: inputValue,
+      text: userMessageText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    setMessages((prev) => [...prev, newMessage]);
-    setInputValue('');
 
-    // Trigger typing indicator mock response
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue('');
     setIsTyping(true);
-    setTimeout(() => {
+
+    try {
+      // Initiate request to local backend Server-Sent Events (SSE) chat streaming endpoint
+      const response = await fetch('http://localhost:5001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessageText, targetLanguage })
+      });
+
+      if (!response.ok) throw new Error('Network response issues');
+
       setIsTyping(false);
-      const botResponse: Message = {
-        id: (Date.now() + 1).toString(),
+
+      // Create a bot placeholder message to stream tokens into
+      const botMessageId = (Date.now() + 1).toString();
+      const botPlaceholder: Message = {
+        id: botMessageId,
         sender: 'bot',
-        text: `Translation analysis processed successfully.`,
+        text: '',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages((prev) => [...prev, botResponse]);
-    }, 1500);
+
+      setMessages((prev) => [...prev, botPlaceholder]);
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let rawBuffer = '';
+      let streamFinished = false;
+
+      if (!reader) return;
+
+      while (!streamFinished) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        rawBuffer += chunk;
+
+        // Split SSE data chunks
+        const lines = rawBuffer.split('\n');
+        rawBuffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+
+        for (const line of lines) {
+          const cleanedLine = line.trim();
+          if (!cleanedLine.startsWith('data: ')) continue;
+          const dataContent = cleanedLine.replace('data: ', '');
+
+          if (dataContent === '[DONE]') {
+            streamFinished = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(dataContent);
+            if (parsed.text) {
+              setMessages((prev) => 
+                prev.map((msg) => 
+                  msg.id === botMessageId 
+                    ? { ...msg, text: msg.text + parsed.text } 
+                    : msg
+                )
+              );
+            }
+          } catch (e) {
+            // Quietly catch json parse boundaries
+          }
+        }
+      }
+
+      // Final pass: Parse structured JSON elements (corrections, translations, originalText) from the complete response stream text
+      setMessages((prev) => 
+        prev.map((msg) => {
+          if (msg.id !== botMessageId) return msg;
+
+          const rawText = msg.text;
+          const jsonStartTag = '---START_STRUCTURED_JSON---';
+          const jsonEndTag = '---END_STRUCTURED_JSON---';
+          
+          const startIndex = rawText.indexOf(jsonStartTag);
+          const endIndex = rawText.indexOf(jsonEndTag);
+
+          if (startIndex !== -1 && endIndex !== -1) {
+            const jsonText = rawText.substring(startIndex + jsonStartTag.length, endIndex).trim();
+            const responseTranslation = rawText.substring(endIndex + jsonEndTag.length).trim();
+            
+            try {
+              const parsedMetadata = JSON.parse(jsonText);
+              return {
+                ...msg,
+                text: responseTranslation || rawText, // Use fallback raw text if empty
+                originalText: parsedMetadata.originalText || undefined,
+                correction: parsedMetadata.correction || undefined,
+                explanation: parsedMetadata.explanation || undefined
+              };
+            } catch (err) {
+              console.error('Failed to parse response JSON schema metadata:', err);
+            }
+          }
+          return msg;
+        })
+      );
+
+    } catch (error) {
+      console.error('Error connecting to translation streaming backend API:', error);
+      setIsTyping(false);
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        sender: 'bot',
+        text: 'Sorry, I encountered an error connecting to the translation parser. Please make sure the backend is running.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
   };
 
   const toggleThemeMode = () => {
-    setTheme(prev => ({
+    setTheme((prev) => ({
       ...prev,
       mode: prev.mode === 'dark' ? 'light' : 'dark'
     }));
