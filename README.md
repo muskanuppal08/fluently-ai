@@ -1,21 +1,60 @@
-# Fluently-AI
+# 🌐 Fluently-AI
+> **Your Intelligent Language Practice Companion & Real-Time AI Translator**
 
-A premium, real-time AI language practice partner and translation workspace built with React, Node.js, and Mistral AI, packaged for web and mobile (Android/iOS) using Capacitor.
+Fluently-AI is a high-fidelity, real-time AI language tutor and translation workspace. Built to help language learners gain confidence, the application bridges real-time translation tools with contextual roleplay practice and active grammar feedback loops. Packaged for desktop browser interfaces and compiled for mobile device wrappers (Android/iOS) via Capacitor.
 
-## Updates
-- **Module 1 Complete**: Componentized structural code refactoring, styling polish, and verified UI builds.
-- **Module 2 Complete**: Real-time Node.js backend streaming integrations connected to Mistral AI API.
+---
 
-## Features (Planned & In Progress)
-- **Module 1**: Immersive glassmorphism chat workspace (responsive design for mobile/web). [Complete]
-- **Module 2**: Mistral AI Translation Engine with streaming text. [Complete]
-- **Module 3**: Grammar Practice Room with correction cards and scenarios. [Next]
-- **Module 4**: Vocabulary Notebook & session preservation.
-- **Module 5**: Mobile deployment with Capacitor.
+## ✨ Features
 
-## Tech Stack
-- Frontend: React (Vite, TS, Tailwind CSS)
-- Mobile Wrapper: Capacitor (Ionic)
-- Backend: Node.js (Express, Socket.io)
-- Database: MongoDB
-- AI: Mistral AI API
+### 🎨 Premium Glassmorphism Interface (Module 1)
+- **Tailored Aesthetics**: Toggle between a premium dark-mesh workspace and a clean light interface.
+- **Customizable Room Accents**: Personalize your learning space with classy desaturated accents (`Violet`, `Emerald`, `Slate`, `Amber`).
+- **Interactive Wallpapers**: Swap chat canvas styles (`Classic Mesh`, `Cosmic Nebula`, `Clean Minimalist`) based on your learning mood.
+- **Responsive Workspace**: Fully responsive workspace that scales seamlessly from ultra-wide displays to mobile viewports.
+
+### ⚡ Real-Time Streaming Translation (Module 2)
+- **Word-by-Word Streaming**: Responses render instantly using Server-Sent Events (SSE), making chats feel snappy and natural.
+- **Auto Language Detection**: Enter text in your native language to receive immediate translations, or write in the target language to practice conversational flow.
+- **Grammar Feedback Cards**: Dynamic inline overlays detect grammatical errors, present natural phrasing alternatives, and provide deep explanatory rule cards.
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | React (Vite, TS), Tailwind CSS, Lucide Icons |
+| **Mobile Shell** | Capacitor (Ionic Native Wrappers) |
+| **Backend API** | Node.js, Express.js |
+| **Streaming** | Server-Sent Events (SSE) |
+| **AI Brain** | Mistral AI API (`mistral-tiny`) |
+
+---
+
+## 🚀 Quick Start
+
+### 1. Configure the Backend
+First, clone the repository, navigate to the `backend` folder, and configure your API credentials:
+```bash
+cd backend
+npm install
+```
+Create a `.env` file in the `backend` root:
+```env
+PORT=5001
+MISTRAL_API_KEY=your_mistral_api_key_here
+```
+Run the backend server:
+```bash
+npm run dev
+```
+
+### 2. Configure the Frontend
+In a new terminal window, navigate to the `frontend` folder, install packages, and spin up the Vite development server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) in your browser to start practicing!
