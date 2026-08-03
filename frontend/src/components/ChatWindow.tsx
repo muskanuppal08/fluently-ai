@@ -9,10 +9,12 @@ import {
   Sun,
   Moon,
   Palette,
-  LayoutGrid
+  LayoutGrid,
+  Gamepad2
 } from 'lucide-react';
 import { GrammarCard } from './GrammarCard';
 import type { ThemeConfig, ColorTheme } from '../App';
+import { SCENARIOS } from '../App';
 
 export interface Message {
   id: string;
@@ -35,9 +37,10 @@ interface ChatWindowProps {
   theme: ThemeConfig;
   setTheme: React.Dispatch<React.SetStateAction<ThemeConfig>>;
   toggleThemeMode: () => void;
+  activeScenario: string;
+  onScenarioChange: (id: string) => void;
 }
 
-// Background configurations
 const BACKGROUNDS = [
   { id: 'bg-mesh-dark', name: 'Classic Dark', class: 'bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900' },
   { id: 'bg-nebula', name: 'Cosmic Nebula', class: 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950/60 via-slate-950 to-slate-950' },
@@ -60,12 +63,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   isTyping = false,
   theme,
   setTheme,
-  toggleThemeMode
+  toggleThemeMode,
+  activeScenario,
+  onScenarioChange
 }) => {
   const [showConfig, setShowConfig] = useState(false);
   const isDark = theme.mode === 'dark';
 
-  // Classy theme configurations (desaturated pastel-like states)
   const themeClasses = {
     violet: {
       accent: 'text-indigo-400',
@@ -86,10 +90,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       accentBg: 'bg-slate-700/10 border-slate-600/30 text-slate-400'
     },
     amber: {
-      accent: 'text-amber-500',
+      accent: 'text-amber-505',
       border: 'focus-within:border-amber-500/40',
       btn: 'bg-amber-600/95 hover:bg-amber-500 text-white',
-      accentBg: 'bg-amber-600/10 border-amber-500/30 text-amber-500'
+      accentBg: 'bg-amber-600/10 border-amber-500/30 text-amber-550'
     }
   };
 
@@ -110,11 +114,30 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <h2 className={`font-semibold text-base ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Translation AI Room</h2>
+            <h2 className={`font-semibold text-base ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Practice Room</h2>
           </div>
+          
+          <div className={`h-4 w-[1px] ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
+
+          {/* Scenario Selector */}
+          <div className={`flex items-center space-x-2 text-sm py-1.5 px-3 rounded-lg border transition ${
+            isDark ? 'text-slate-400 bg-slate-800/40 border-slate-700/50' : 'text-slate-600 bg-slate-100 border-slate-200'
+          }`}>
+            <Gamepad2 className="w-4 h-4 text-indigo-400" />
+            <select
+              value={activeScenario}
+              onChange={(e) => onScenarioChange(e.target.value)}
+              className={`bg-transparent focus:outline-none font-medium cursor-pointer ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
+            >
+              {SCENARIOS.map(s => (
+                <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div className={`h-4 w-[1px] ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
           
-          <div className={`flex items-center space-x-2 text-sm bg-slate-800/40 py-1.5 px-3 rounded-lg border transition ${
+          <div className={`flex items-center space-x-2 text-sm py-1.5 px-3 rounded-lg border transition ${
             isDark ? 'text-slate-400 bg-slate-800/40 border-slate-700/50' : 'text-slate-600 bg-slate-100 border-slate-200'
           }`}>
             <Globe className="w-4 h-4 text-purple-500" />
@@ -133,7 +156,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Theme Customizer Switcher Trigger */}
+          {/* Customizer */}
           <button 
             onClick={() => setShowConfig(!showConfig)}
             className={`p-2 rounded-lg transition cursor-pointer border ${
@@ -146,7 +169,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <Palette className="w-4 h-4" />
           </button>
 
-          {/* Light/Dark Toggle */}
+          {/* Toggle */}
           <button 
             onClick={toggleThemeMode}
             className={`p-2 rounded-lg transition cursor-pointer border ${
@@ -170,7 +193,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </header>
 
-      {/* Floating Theme Customizer Panel */}
+      {/* Customizer Floating Panel */}
       {showConfig && (
         <div className={`absolute top-22 right-8 p-5 rounded-2xl border shadow-xl z-20 w-80 backdrop-blur-xl transition duration-200 ${
           isDark ? 'bg-slate-900/95 border-slate-800 text-slate-200' : 'bg-white/95 border-slate-200 text-slate-800'
@@ -218,7 +241,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* Message List */}
+      {/* Message list */}
       <div className={`flex-1 overflow-y-auto p-8 space-y-6 transition-all duration-300 ${getChatBgClass()}`}>
         {messages.map((msg) => (
           <div
@@ -272,7 +295,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ))}
 
-        {/* Typing Indicator */}
+        {/* Typing */}
         {isTyping && (
           <div className="flex items-start max-w-2xl space-x-4 mr-auto">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${currentTheme.accentBg}`}>
@@ -289,7 +312,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
       </div>
 
-      {/* Input entry */}
+      {/* Input */}
       <div className={`p-6 border-t transition-colors duration-300 ${
         isDark ? 'border-slate-800/80 bg-slate-900/20' : 'border-slate-200/60 bg-slate-50/50'
       }`}>
@@ -300,7 +323,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         }`}>
           <input
             type="text"
-            placeholder={`Send message to practice or translate to ${targetLanguage}...`}
+            placeholder={
+              activeScenario === 'none' 
+                ? `Send message to practice or translate to ${targetLanguage}...` 
+                : `Say something in context of the scenario...`
+            }
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}

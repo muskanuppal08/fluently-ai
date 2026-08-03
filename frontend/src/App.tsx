@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import type { ChatSession } from './components/Sidebar';
 import { ChatWindow } from './components/ChatWindow';
@@ -11,6 +11,45 @@ export interface ThemeConfig {
   colorTheme: ColorTheme;
   chatBackground: string;
 }
+
+export interface PracticeScenario {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  systemPromptAddition: string;
+}
+
+export const SCENARIOS: PracticeScenario[] = [
+  {
+    id: 'none',
+    name: 'Free Chat & Translation',
+    emoji: '💬',
+    description: 'Simple casual conversation and quick translation assistance.',
+    systemPromptAddition: ''
+  },
+  {
+    id: 'cafe',
+    name: 'Ordering in a Cafe',
+    emoji: '☕',
+    description: 'Practice ordering coffee and pastries, interacting with the barista.',
+    systemPromptAddition: 'Act strictly as a busy but polite barista at a local cafe. Greet the user in the target language and wait for their order. Introduce minor complications like being out of certain milks or asking if they want it for here or to go.'
+  },
+  {
+    id: 'hotel',
+    name: 'Hotel Check-in',
+    emoji: '🏨',
+    description: 'Manage booking details, check-in questions, and request amenities.',
+    systemPromptAddition: 'Act strictly as a helpful hotel front desk receptionist. Ask the user for their booking name, explain room amenities, ask for passport details, and hand over the virtual room keys.'
+  },
+  {
+    id: 'directions',
+    name: 'Asking for Directions',
+    emoji: '🗺️',
+    description: 'Practice asking local citizens for navigation help in a new city.',
+    systemPromptAddition: 'Act strictly as a local pedestrian whom the user has stopped to ask for directions. Give simple, structured spatial directions using landmarks in the target language. Confirm if they understood.'
+  }
+];
 
 function App() {
   const [sessions] = useState<ChatSession[]>([
@@ -31,12 +70,23 @@ function App() {
   const [inputValue, setInputValue] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('Spanish');
   const [isTyping, setIsTyping] = useState(false);
+  const [activeScenario, setActiveScenario] = useState<string>('none');
 
   const [theme, setTheme] = useState<ThemeConfig>({
     mode: 'dark',
     colorTheme: 'violet',
     chatBackground: 'bg-mesh-dark'
   });
+
+  // Track system theme preferences or update dark mode class
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme.mode === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme.mode]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -54,18 +104,20 @@ function App() {
     setIsTyping(true);
 
     try {
-      // Initiate request to local backend Server-Sent Events (SSE) chat streaming endpoint
       const response = await fetch('http://localhost:5001/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessageText, targetLanguage })
+        body: JSON.stringify({ 
+          message: userMessageText, 
+          targetLanguage,
+          scenarioId: activeScenario 
+        })
       });
 
       if (!response.ok) throw new Error('Network response issues');
 
       setIsTyping(false);
 
-      // Create a bot placeholder message to stream tokens into
       const botMessageId = (Date.now() + 1).toString();
       const botPlaceholder: Message = {
         id: botMessageId,
@@ -90,9 +142,8 @@ function App() {
         const chunk = decoder.decode(value);
         rawBuffer += chunk;
 
-        // Split SSE data chunks
         const lines = rawBuffer.split('\n');
-        rawBuffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+        rawBuffer = lines.pop() || '';
 
         for (const line of lines) {
           const cleanedLine = line.trim();
@@ -116,12 +167,11 @@ function App() {
               );
             }
           } catch (e) {
-            // Quietly catch json parse boundaries
+            // Split boundaries
           }
         }
       }
 
-      // Final pass: Parse structured JSON elements (corrections, translations, originalText) from the complete response stream text
       setMessages((prev) => 
         prev.map((msg) => {
           if (msg.id !== botMessageId) return msg;
@@ -141,13 +191,13 @@ function App() {
               const parsedMetadata = JSON.parse(jsonText);
               return {
                 ...msg,
-                text: responseTranslation || rawText, // Use fallback raw text if empty
+                text: responseTranslation || rawText,
                 originalText: parsedMetadata.originalText || undefined,
                 correction: parsedMetadata.correction || undefined,
                 explanation: parsedMetadata.explanation || undefined
               };
             } catch (err) {
-              console.error('Failed to parse response JSON schema metadata:', err);
+              console.error('Failed to parse response JSON metadata:', err);
             }
           }
           return msg;
@@ -165,6 +215,21 @@ function App() {
       };
       setMessages((prev) => [...prev, errorMessage]);
     }
+  };
+
+  const handleScenarioChange = (scenarioId: string) => {
+    setActiveScenario(scenarioId);
+    const selected = SCENARIOS.find(s => s.id === scenarioId);
+    setMessages([
+      {
+        id: Date.now().toString(),
+        sender: 'bot',
+        text: selected?.id === 'none' 
+          ? `Welcome to Free Chat mode. You can write in English or practice directly in ${targetLanguage}.`
+          : `Entering practice room: **${selected?.name}** ${selected?.emoji}.\nLet's start our conversation roleplay in ${targetLanguage}!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
   };
 
   const toggleThemeMode = () => {
@@ -195,6 +260,8 @@ function App() {
         theme={theme}
         setTheme={setTheme}
         toggleThemeMode={toggleThemeMode}
+        activeScenario={activeScenario}
+        onScenarioChange={handleScenarioChange}
       />
     </div>
   );

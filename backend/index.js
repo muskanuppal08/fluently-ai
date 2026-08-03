@@ -13,9 +13,14 @@ const mistral = new Mistral({ apiKey });
 app.use(cors());
 app.use(express.json());
 
-// Endpoint to handle real-time streaming translation and grammar analysis
+const SCENARIOS = {
+  cafe: 'Act strictly as a busy but polite barista at a local cafe. Greet the user in the target language and wait for their order. Introduce minor complications like being out of certain milks or asking if they want it for here or to go.',
+  hotel: 'Act strictly as a helpful hotel front desk receptionist. Ask the user for their booking name, explain room amenities, ask for passport details, and hand over the virtual room keys.',
+  directions: 'Act strictly as a local pedestrian whom the user has stopped to ask for directions. Give simple, structured spatial directions using landmarks in the target language. Confirm if they understood.'
+};
+
 app.post('/api/chat', async (req, res) => {
-  const { message, targetLanguage } = req.body;
+  const { message, targetLanguage, scenarioId } = req.body;
 
   if (!message || !targetLanguage) {
     return res.status(400).json({ error: 'Message and targetLanguage are required.' });
@@ -25,6 +30,8 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+
+  const scenarioContext = SCENARIOS[scenarioId] || '';
 
   const systemInstructions = `
 You are a world-class translation tutor and language practice companion.
@@ -44,6 +51,8 @@ Please output your response exactly in the following structured format, includin
 
 Response translation:
 [Provide the fluent translated sentence in ${targetLanguage} inside this section if the input was in another language. If the input was already in ${targetLanguage}, continue the conversation naturally in ${targetLanguage} while keeping the grammar corrections inside the JSON block above].
+
+${scenarioContext ? `Roleplay Context: ${scenarioContext}` : ''}
 `;
 
   try {
@@ -58,7 +67,6 @@ Response translation:
     for await (const chunk of responseStream) {
       const text = chunk.data.choices[0]?.delta?.content || '';
       if (text) {
-        // Send streamed chunk to frontend client
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
