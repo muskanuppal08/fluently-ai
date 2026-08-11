@@ -18,6 +18,14 @@ Fluently-AI is a high-fidelity, real-time AI language tutor and translation work
 - **Auto Language Detection**: Enter text in your native language to receive immediate translations, or write in the target language to practice conversational flow.
 - **Grammar Feedback Cards**: Dynamic inline overlays detect grammatical errors, present natural phrasing alternatives, and provide deep explanatory rule cards.
 
+### 🎭 Immersive Language Practice Room (Module 3)
+- **Situational Roleplay Scenarios**: Choose from active scenarios like **Ordering in a Cafe** ☕, **Hotel Check-in** 🏨, or **Asking for Directions** 🗺️.
+- **Dynamic Role-Play Persona**: The AI assumes characters (like a barista or hotel receptionist) in the target language to test your conversational capacity under pressure.
+
+### 💾 Persistent History & Vocab Notebook (Module 4)
+- **Database Session Persistence**: Conversations are saved to MongoDB using Mongoose. Users can create new chat sessions or retrieve historical rooms.
+- **Vocabulary Bookmarking**: Bookmark useful phrases, translations, and grammar explanations directly from the chat feed into a personal local learning notebook.
+
 ---
 
 ## 🛠 Tech Stack
@@ -27,6 +35,7 @@ Fluently-AI is a high-fidelity, real-time AI language tutor and translation work
 | **Frontend** | React (Vite, TS), Tailwind CSS, Lucide Icons |
 | **Mobile Shell** | Capacitor (Ionic Native Wrappers) |
 | **Backend API** | Node.js, Express.js |
+| **Database** | MongoDB (Mongoose ODM) |
 | **Streaming** | Server-Sent Events (SSE) |
 | **AI Brain** | Mistral AI API (`mistral-tiny`) |
 
@@ -44,6 +53,7 @@ Create a `.env` file in the `backend` root:
 ```env
 PORT=5001
 MISTRAL_API_KEY=your_mistral_api_key_here
+MONGODB_URI=mongodb://127.0.0.1:27017/fluently
 ```
 Run the backend server:
 ```bash

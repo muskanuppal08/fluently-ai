@@ -10,7 +10,8 @@ import {
   Moon,
   Palette,
   LayoutGrid,
-  Gamepad2
+  Gamepad2,
+  Bookmark
 } from 'lucide-react';
 import { GrammarCard } from './GrammarCard';
 import type { ThemeConfig, ColorTheme } from '../App';
@@ -39,6 +40,7 @@ interface ChatWindowProps {
   toggleThemeMode: () => void;
   activeScenario: string;
   onScenarioChange: (id: string) => void;
+  onSavePhrase: (msg: Message) => void;
 }
 
 const BACKGROUNDS = [
@@ -65,7 +67,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   setTheme,
   toggleThemeMode,
   activeScenario,
-  onScenarioChange
+  onScenarioChange,
+  onSavePhrase
 }) => {
   const [showConfig, setShowConfig] = useState(false);
   const isDark = theme.mode === 'dark';
@@ -90,7 +93,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       accentBg: 'bg-slate-700/10 border-slate-600/30 text-slate-400'
     },
     amber: {
-      accent: 'text-amber-505',
+      accent: 'text-amber-500',
       border: 'focus-within:border-amber-500/40',
       btn: 'bg-amber-600/95 hover:bg-amber-500 text-white',
       accentBg: 'bg-amber-600/10 border-amber-500/30 text-amber-550'
@@ -193,7 +196,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </header>
 
-      {/* Customizer Floating Panel */}
+      {/* Customizer Panel */}
       {showConfig && (
         <div className={`absolute top-22 right-8 p-5 rounded-2xl border shadow-xl z-20 w-80 backdrop-blur-xl transition duration-200 ${
           isDark ? 'bg-slate-900/95 border-slate-800 text-slate-200' : 'bg-white/95 border-slate-200 text-slate-800'
@@ -270,17 +273,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               }`}>
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.text}</p>
                 
-                <div className={`flex items-center justify-between mt-2.5 pt-1.5 border-t text-[10px] ${
+                <div className={`flex items-center justify-between mt-2.5 pt-1.5 border-t text-[10px] space-x-4 ${
                   msg.sender === 'user' 
                     ? 'border-white/10 text-purple-200' 
                     : isDark ? 'border-slate-800 text-slate-500' : 'border-slate-100 text-slate-400'
                 }`}>
                   <span>{msg.timestamp}</span>
-                  {msg.sender === 'bot' && (
-                    <button className="hover:text-purple-400 transition cursor-pointer">
-                      <Volume2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {msg.sender === 'bot' && (
+                      <>
+                        <button 
+                          onClick={() => onSavePhrase(msg)}
+                          className="hover:text-purple-400 transition cursor-pointer"
+                          title="Save to Notebook"
+                        >
+                          <Bookmark className="w-3.5 h-3.5" />
+                        </button>
+                        <button className="hover:text-purple-400 transition cursor-pointer">
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 

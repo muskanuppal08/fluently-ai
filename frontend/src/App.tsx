@@ -52,25 +52,14 @@ export const SCENARIOS: PracticeScenario[] = [
 ];
 
 function App() {
-  const [sessions] = useState<ChatSession[]>([
-    { id: '1', title: 'Cafe ordering practice', targetLanguage: 'Spanish', lastUpdated: 'Just now' },
-    { id: '2', title: 'Directions in Tokyo', targetLanguage: 'Japanese', lastUpdated: 'Yesterday' }
-  ]);
-  const [activeSession, setActiveSession] = useState<string>('1');
-  
-  const [messages, setMessages] = useState<Message[]>([
-    { 
-      id: 'm1', 
-      sender: 'bot', 
-      text: '¡Hola! ¿Cómo estás hoy? ¿En qué te puedo ayudar? (Hello! How are you today? How can I help you?)', 
-      timestamp: '10:10 AM' 
-    }
-  ]);
-
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSession, setActiveSession] = useState<string>('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('Spanish');
   const [isTyping, setIsTyping] = useState(false);
   const [activeScenario, setActiveScenario] = useState<string>('none');
+  const [vocabNotebook, setVocabNotebook] = useState<any[]>([]);
 
   const [theme, setTheme] = useState<ThemeConfig>({
     mode: 'dark',
@@ -87,6 +76,88 @@ function App() {
       root.classList.remove('dark');
     }
   }, [theme.mode]);
+
+  // Load available sessions from database on mount
+  useEffect(() => {
+    fetchSessions();
+    fetchVocabPhrases();
+  }, []);
+
+  // Fetch conversations history logs when active session switches
+  useEffect(() => {
+    if (activeSession) {
+      fetchSessionHistory(activeSession);
+    }
+  }, [activeSession]);
+
+  const fetchSessions = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/sessions');
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(data);
+        if (data.length > 0 && !activeSession) {
+          // Default selection to first session if none active
+          setActiveSession(data[0]._id || data[0].id);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching sessions list:', e);
+    }
+  };
+
+  const fetchSessionHistory = async (id: string) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/sessions/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Map database timestamp strings back into localized view strings
+        const formattedMessages = (data.messages || []).map((m: any) => ({
+          id: m._id || m.id,
+          sender: m.sender,
+          text: m.text,
+          originalText: m.originalText,
+          correction: m.correction,
+          explanation: m.explanation,
+          timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setMessages(formattedMessages);
+        setTargetLanguage(data.targetLanguage);
+        setActiveScenario(data.scenarioId || 'none');
+      }
+    } catch (e) {
+      console.error('Error loading session messages logs:', e);
+    }
+  };
+
+  const fetchVocabPhrases = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/phrases');
+      if (response.ok) {
+        const data = await response.json();
+        setVocabNotebook(data);
+      }
+    } catch (e) {
+      console.error('Error loading notebook vocabulary:', e);
+    }
+  };
+
+  const createNewSession = async (title: string, language: string, scenarioId: string) => {
+    try {
+      const response = await fetch('http://localhost:5001/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, targetLanguage: language, scenarioId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(prev => [data, ...prev]);
+        setActiveSession(data._id || data.id);
+      }
+    } catch (e) {
+      console.error('Error creating new session room:', e);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -110,7 +181,8 @@ function App() {
         body: JSON.stringify({ 
           message: userMessageText, 
           targetLanguage,
-          scenarioId: activeScenario 
+          scenarioId: activeScenario,
+          sessionId: activeSession
         })
       });
 
@@ -167,7 +239,7 @@ function App() {
               );
             }
           } catch (e) {
-            // Split boundaries
+            // parse boundaries
           }
         }
       }
@@ -220,16 +292,34 @@ function App() {
   const handleScenarioChange = (scenarioId: string) => {
     setActiveScenario(scenarioId);
     const selected = SCENARIOS.find(s => s.id === scenarioId);
-    setMessages([
-      {
-        id: Date.now().toString(),
-        sender: 'bot',
-        text: selected?.id === 'none' 
-          ? `Welcome to Free Chat mode. You can write in English or practice directly in ${targetLanguage}.`
-          : `Entering practice room: **${selected?.name}** ${selected?.emoji}.\nLet's start our conversation roleplay in ${targetLanguage}!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    
+    // Create new Database session dynamically on roleplay scenario switches
+    if (selected && selected.id !== 'none') {
+      createNewSession(`${selected.name} Room`, targetLanguage, selected.id);
+    }
+  };
+
+  const saveToNotebook = async (msg: Message) => {
+    try {
+      const response = await fetch('http://localhost:5001/api/phrases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalText: msg.originalText || msg.text,
+          translatedText: msg.text,
+          correction: msg.correction || '',
+          explanation: msg.explanation || '',
+          targetLanguage
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setVocabNotebook(prev => [data, ...prev]);
+        alert('Saved phrase to notebook! 📔');
       }
-    ]);
+    } catch (e) {
+      console.error('Error saving phrase to database notebook:', e);
+    }
   };
 
   const toggleThemeMode = () => {
@@ -248,6 +338,8 @@ function App() {
         activeSession={activeSession} 
         setActiveSession={setActiveSession}
         theme={theme}
+        onCreateSession={() => createNewSession('New Learning Room', targetLanguage, activeScenario)}
+        vocabNotebook={vocabNotebook}
       />
       <ChatWindow 
         messages={messages}
@@ -262,6 +354,7 @@ function App() {
         toggleThemeMode={toggleThemeMode}
         activeScenario={activeScenario}
         onScenarioChange={handleScenarioChange}
+        onSavePhrase={saveToNotebook}
       />
     </div>
   );
