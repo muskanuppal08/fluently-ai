@@ -26,6 +26,18 @@ Fluently-AI is a high-fidelity, real-time AI language tutor and translation work
 - **Database Session Persistence**: Conversations are saved to MongoDB using Mongoose. Users can create new chat sessions or retrieve historical rooms.
 - **Vocabulary Bookmarking**: Bookmark useful phrases, translations, and grammar explanations directly from the chat feed into a personal local learning notebook.
 
+### 📱 Cross-Platform Compilation (Module 5)
+- **Capacitor Integration**: Native Android and iOS application shells scaffolded from the unified React-Vite web bundle assets.
+
+---
+
+## 🔮 Future Roadmap
+
+- **Offline Practice (On-Device LLMs)**: Integrating lightweight local models (e.g., Llama-3 3B) using WebLLM for secure, offline translation.
+- **Speech-to-Speech Tutoring**: Introducing whisper voice inputs and voice synthesis (TTS) for natural, voice-driven speech practice.
+- **Gamified Spaced Repetition (SRS)**: Turning the vocab notebook into a flashcard study game using automated memory interval intervals.
+- **Group Practice Rooms**: Multiplayer WebRTC workspaces where the AI tutor dynamically moderates conversations between student peers.
+
 ---
 
 ## 🛠 Tech Stack
